@@ -1,0 +1,7 @@
+# Secrets d'authentification Google
+*.json
+!appsscript.json
+
+# Python
+__pycache__/
+*.pyc
