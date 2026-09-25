@@ -164,10 +164,26 @@ function synchroniser() {
       // N'accuser que ce qui a réellement atterri dans l'onglet, par le
       // code de la colonne A : plusieurs lignes de l'onglet peuvent venir
       // d'une même ligne de caisse.
-      var codes = lignes.slice(0, ajoutees).map(function (l) {
+      var ecrites = lignes.slice(0, ajoutees);
+      var codes = ecrites.map(function (l) {
         return l.code;
       });
-      appeler({ action: "ack", codes: codes });
+      try {
+        appeler({ action: "ack", codes: codes });
+      } catch (e) {
+        // export-caisse encore dans sa version d'avant le 25/09 : elle ne
+        // connaît que l'accusé par identifiant, et n'a de toute façon
+        // envoyé que des lignes entières. Sans ce repli, les lignes écrites
+        // ne seraient jamais accusées, et réécrites en double au passage
+        // suivant.
+        if (String(e.message).indexOf("'ids'") === -1) throw e;
+        appeler({
+          action: "ack",
+          ids: ecrites.map(function (l) {
+            return l.id;
+          })
+        });
+      }
     }
 
     // Si categoriesInvalides() a levé plus haut, on n'arrive jamais ici :
