@@ -138,7 +138,11 @@ function synchroniser() {
   }
 
   try {
-    var lignes = appeler({ action: "pending", limit: 500 }).lignes || [];
+    // Format 2 (25/09/2026) : une ligne qui règle une fiche arrive découpée
+    // entre la chambre et les extras qu'elle paie (JC1234 + JC1234-V17), et
+    // une part connue trop tard arrive en paire de reclassement
+    // (JC1234-V17 / JC1234-V17R, somme nulle). Le solde ne bouge pas.
+    var lignes = appeler({ action: "pending", limit: 500, format: 2 }).lignes || [];
     var ajoutees = 0;
 
     if (lignes.length > 0) {
@@ -157,11 +161,13 @@ function synchroniser() {
       }
 
       ajoutees = ecrire(feuille, lignes);
-      // N'accuser que ce qui a réellement atterri dans l'onglet.
-      var ids = lignes.slice(0, ajoutees).map(function (l) {
-        return l.id;
+      // N'accuser que ce qui a réellement atterri dans l'onglet, par le
+      // code de la colonne A : plusieurs lignes de l'onglet peuvent venir
+      // d'une même ligne de caisse.
+      var codes = lignes.slice(0, ajoutees).map(function (l) {
+        return l.code;
       });
-      appeler({ action: "ack", ids: ids });
+      appeler({ action: "ack", codes: codes });
     }
 
     // Si categoriesInvalides() a levé plus haut, on n'arrive jamais ici :
