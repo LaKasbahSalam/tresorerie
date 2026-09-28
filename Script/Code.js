@@ -57,6 +57,11 @@ var OUVERTURE = 7881;
 
 /** Première ligne de données (la 1 porte les en-têtes). */
 var PREMIERE_LIGNE = 2;
+
+// Les dettes des courses (« à payer plus tard » dans l'appli, code DT…)
+// arrivent avec les lignes de caisse mais s'écrivent ici, pas dans Caisse :
+// aucun argent n'est sorti. Onglet créé au premier passage s'il manque.
+var ONGLET_DETTES = "Dettes";
 /** Solde officiel de la caisse, posé par Karim (17/09/2026). */
 var CELLULE_SOLDE_CAISSE = "L1";
 
@@ -142,10 +147,16 @@ function synchroniser() {
     // entre la chambre et les extras qu'elle paie (JC1234 + JC1234-V17), et
     // une part connue trop tard arrive en paire de reclassement
     // (JC1234-V17 / JC1234-V17R, somme nulle). Le solde ne bouge pas.
-    var lignes = appeler({ action: "pending", limit: 500, format: 2 }).lignes || [];
+    var recues = appeler({ action: "pending", limit: 500, format: 2 }).lignes || [];
+    // Depuis le 28/09/2026, les courses arrivent aussi : CO… dans Caisse
+    // (achats par rayon, avance de Karim, Ayoub ou Abdoul), DT… dans Dettes.
+    var dettes = recues.filter(estDette);
+    var lignes = recues.filter(function (l) {
+      return !estDette(l);
+    });
     var ajoutees = 0;
 
-    if (lignes.length > 0) {
+    if (lignes.length > 0 || dettes.length > 0) {
       // Valider AVANT d'écrire quoi que ce soit. Écrire d'abord et
       // découvrir le problème en cours de route laisse des lignes à moitié
       // écrites dans l'onglet — et comme rien n'est alors accusé réception,
@@ -160,11 +171,14 @@ function synchroniser() {
         );
       }
 
-      ajoutees = ecrire(feuille, lignes);
+      ajoutees = lignes.length > 0 ? ecrire(feuille, lignes) : 0;
       // N'accuser que ce qui a réellement atterri dans l'onglet, par le
       // code de la colonne A : plusieurs lignes de l'onglet peuvent venir
       // d'une même ligne de caisse.
       var ecrites = lignes.slice(0, ajoutees);
+      if (dettes.length > 0) {
+        ecrites = ecrites.concat(dettes.slice(0, ecrireDettes(dettes)));
+      }
       var codes = ecrites.map(function (l) {
         return l.code;
       });
@@ -298,6 +312,44 @@ function ecrire(feuille, lignes) {
   feuille.getRange(depart, 1, valeurs.length, 8).setValues(valeurs);
   // Forcer l'écriture avant d'accuser réception : sinon on confirmerait des
   // lignes encore en tampon, qu'une erreur pourrait emporter.
+  SpreadsheetApp.flush();
+  return valeurs.length;
+}
+
+/** Une dette de course (code DT…), pour l'onglet Dettes. */
+function estDette(l) {
+  return /^DT\d+$/.test(String(l.code || ""));
+}
+
+/**
+ * Écrit les dettes des courses en bas de l'onglet Dettes : qui on doit,
+ * combien, pour quoi. La colonne « Réglée le » est à toi : la remplir le
+ * jour où la dette est payée (le paiement lui-même passe par le groupe
+ * Caisse, comme d'habitude).
+ */
+function ecrireDettes(lignes) {
+  var classeur = SpreadsheetApp.getActive();
+  var feuille = classeur.getSheetByName(ONGLET_DETTES);
+  if (!feuille) {
+    feuille = classeur.insertSheet(ONGLET_DETTES);
+    feuille
+      .getRange(1, 1, 1, 6)
+      .setValues([["ID", "Date", "À qui", "Montant (MAD)", "Pour quoi", "Réglée le"]])
+      .setFontWeight("bold");
+    feuille.setFrozenRows(1);
+  }
+  var depart = Math.max(feuille.getLastRow() + 1, 2);
+  var valeurs = lignes.map(function (l) {
+    return [
+      l.code,
+      l.date_caisse ? new Date(l.date_caisse + "T12:00:00") : "",
+      l.creancier || "",
+      l.montant,
+      l.description,
+      ""
+    ];
+  });
+  feuille.getRange(depart, 1, valeurs.length, 6).setValues(valeurs);
   SpreadsheetApp.flush();
   return valeurs.length;
 }
