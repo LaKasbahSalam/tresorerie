@@ -444,17 +444,30 @@ function insererCorrectionCaisse() {
   }
 
   var n = classeur.getActiveRange().getRow();
+  // Curseur posé sur la ligne vide juste sous le comptage (29/09/2026, ligne
+  // 2548 sous le comptage de la 2547) : on remonte d'une ligne.
+  if (lireMontant(feuille.getRange(n, 9).getValue()) === null && n > PREMIERE_LIGNE &&
+      lireMontant(feuille.getRange(n - 1, 9).getValue()) !== null) {
+    n = n - 1;
+  }
   if (n < PREMIERE_LIGNE) {
     ui.alert("Place-toi sur la ligne où tu as saisi le comptage en colonne I.");
     return;
   }
 
-  var compte = feuille.getRange(n, 9).getValue();
+  var brut = feuille.getRange(n, 9).getValue();
+  var compte = lireMontant(brut);
   var solde = feuille.getRange(n, 8).getValue();
-  if (typeof compte !== "number") {
-    ui.alert("Ligne " + n + " : pas de montant compté en colonne I.");
+  if (compte === null) {
+    ui.alert(
+      "Ligne " + n + " : pas de montant compté en colonne I" +
+        (brut === "" ? "." : " (« " + brut + " » n'est pas un montant).")
+    );
     return;
   }
+  // Tapé comme du texte (« 3 005 », « 3005 MAD ») : la formule de correction
+  // ne saurait pas le soustraire. On le réécrit en nombre, même valeur.
+  var enTexte = typeof brut !== "number";
   if (typeof solde !== "number") {
     ui.alert("Ligne " + n + " : la colonne H ne contient pas de solde.");
     return;
@@ -483,6 +496,7 @@ function insererCorrectionCaisse() {
     "Insérer une correction de caisse ?",
     "Ligne " + n + " : solde calculé " + solde + ", compté " + compte + ".\n" +
       "Correction : " + (ecart > 0 ? "+" : "") + ecart + " MAD (" + CATEGORIE_ECART + ").\n\n" +
+      (enTexte ? "Le comptage en I était du texte : il sera réécrit en nombre.\n" : "") +
       "Elle se recalculera seule si le solde change.",
     ui.ButtonSet.OK_CANCEL
   );
@@ -497,8 +511,16 @@ function insererCorrectionCaisse() {
   }
 
   try {
-    feuille.insertRowAfter(n);
+    if (enTexte) feuille.getRange(n, 9).setValue(compte);
+
+    // Une ligne vide attend déjà sous le comptage : la remplir plutôt que
+    // d'en insérer une deuxième.
     var c = n + 1;
+    var dessous = feuille.getRange(c, 1, 1, 8).getValues()[0];
+    var vide = dessous.every(function (v) {
+      return v === "" || v === null;
+    });
+    if (!vide) feuille.insertRowAfter(n);
     var date = feuille.getRange(n, 2).getValue();
     var code = "ECART-" + Utilities.formatDate(new Date(), "Africa/Casablanca", "yyMMdd-HHmm");
 
@@ -521,6 +543,16 @@ function insererCorrectionCaisse() {
   }
 
   classeur.toast("Correction insérée en ligne " + (n + 1) + ".", "Caisse");
+}
+
+/**
+ * Montant saisi à la main : un nombre, ou un texte qui en est un
+ * (« 3005 », « 3 005 », « 3005,50 », « 3 005 MAD »). `null` sinon.
+ */
+function lireMontant(v) {
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  var t = String(v).replace(/[\s  ]/g, "").replace(/MAD$/i, "").replace(",", ".");
+  return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null;
 }
 
 // ---------- Transport ----------
