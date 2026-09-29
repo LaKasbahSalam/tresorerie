@@ -71,6 +71,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Caisse")
     .addItem("Synchroniser maintenant", "synchroniserManuel")
+    .addItem("Corriger la caisse sous cette ligne", "insererCorrectionCaisse")
     .addToUi();
 
   SpreadsheetApp.getUi()
@@ -414,6 +415,112 @@ function derniereLigneAvecCode(feuille) {
     }
   }
   return 0;
+}
+
+// ---------- Correction de caisse ----------
+
+/** Catégorie de la ligne de correction (référentiel : ecart_caisse). */
+var CATEGORIE_ECART = "Écart de caisse";
+
+/**
+ * Insère, sous la ligne sélectionnée, une ligne qui ramène le solde calculé
+ * (H) au montant compté (I) de cette ligne.
+ *
+ * Tout est en formule, rien n'est figé : D = I − H de la ligne du dessus.
+ * Si un montant plus haut est corrigé, H bouge, l'écart se recalcule, et le
+ * H de la ligne de correction reste égal au comptage.
+ *
+ * Insérer une ligne décale les références : la ligne suivante, qui portait
+ * =H(n)+D(n+1), porterait ensuite =H(n)+D(n+2) et sauterait la correction.
+ * On la raccroche donc à la ligne insérée.
+ */
+function insererCorrectionCaisse() {
+  var ui = SpreadsheetApp.getUi();
+  var classeur = SpreadsheetApp.getActive();
+  var feuille = classeur.getActiveSheet();
+  if (feuille.getName() !== ONGLET) {
+    ui.alert("À utiliser dans l'onglet « " + ONGLET + " ».");
+    return;
+  }
+
+  var n = classeur.getActiveRange().getRow();
+  if (n < PREMIERE_LIGNE) {
+    ui.alert("Place-toi sur la ligne où tu as saisi le comptage en colonne I.");
+    return;
+  }
+
+  var compte = feuille.getRange(n, 9).getValue();
+  var solde = feuille.getRange(n, 8).getValue();
+  if (typeof compte !== "number") {
+    ui.alert("Ligne " + n + " : pas de montant compté en colonne I.");
+    return;
+  }
+  if (typeof solde !== "number") {
+    ui.alert("Ligne " + n + " : la colonne H ne contient pas de solde.");
+    return;
+  }
+
+  // Déjà corrigée : la ligne suivante pointe sur le comptage de celle-ci.
+  var formuleSuivante = String(feuille.getRange(n + 1, 4).getFormula());
+  if (formuleSuivante.indexOf("I" + n + ";") !== -1 || formuleSuivante.indexOf("I" + n + ",") !== -1) {
+    ui.alert("La ligne " + (n + 1) + " est déjà une correction pour ce comptage.");
+    return;
+  }
+
+  var acceptees = categoriesAcceptees(feuille);
+  if (acceptees && !acceptees.some(function (c) {
+    return String(c).trim().toLowerCase() === CATEGORIE_ECART.toLowerCase();
+  })) {
+    ui.alert(
+      "La catégorie « " + CATEGORIE_ECART + " » n'est pas dans la liste déroulante " +
+        "de la colonne E. Ajoute-la à la validation de données, puis relance."
+    );
+    return;
+  }
+
+  var ecart = Math.round((compte - solde) * 100) / 100;
+  var reponse = ui.alert(
+    "Insérer une correction de caisse ?",
+    "Ligne " + n + " : solde calculé " + solde + ", compté " + compte + ".\n" +
+      "Correction : " + (ecart > 0 ? "+" : "") + ecart + " MAD (" + CATEGORIE_ECART + ").\n\n" +
+      "Elle se recalculera seule si le solde change.",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (reponse !== ui.Button.OK) return;
+
+  // La synchro écrit en bas de l'onglet : ne pas décaler les lignes pendant
+  // qu'elle calcule ses formules de solde.
+  var verrou = LockService.getScriptLock();
+  if (!verrou.tryLock(30000)) {
+    ui.alert("Une synchronisation est en cours. Réessaie dans une minute.");
+    return;
+  }
+
+  try {
+    feuille.insertRowAfter(n);
+    var c = n + 1;
+    var date = feuille.getRange(n, 2).getValue();
+    var code = "ECART-" + Utilities.formatDate(new Date(), "Africa/Casablanca", "yyMMdd-HHmm");
+
+    // Colonnes A à H seulement : I et J restent à toi.
+    feuille.getRange(c, 1, 1, 3).setValues([[code, date, "Correction de caisse (comptage ligne " + n + ")"]]);
+    feuille.getRange(c, 4).setFormula("=IF(ISNUMBER(I" + n + ");I" + n + "-H" + n + ";0)");
+    feuille.getRange(c, 5, 1, 3).setValues([[CATEGORIE_ECART, "", ""]]);
+    feuille.getRange(c, 8).setFormula("=H" + n + "+D" + c);
+    feuille.getRange(c, 9, 1, 2).clearContent();
+
+    // Raccrocher la ligne d'après, si elle suit la chaîne =H(n)+D(n+2).
+    var apres = feuille.getRange(c + 1, 8);
+    var m = String(apres.getFormula()).replace(/\s/g, "").match(/^=H(\d+)\+D(\d+)$/i);
+    if (m && Number(m[1]) === n && Number(m[2]) === c + 1) {
+      apres.setFormula("=H" + c + "+D" + (c + 1));
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+
+  classeur.toast("Correction insérée en ligne " + (n + 1) + ".", "Caisse");
 }
 
 // ---------- Transport ----------
