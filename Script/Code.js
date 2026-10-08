@@ -45,12 +45,17 @@
 var ONGLET = "Caisse";
 
 /**
- * Heure de la synchronisation quotidienne, en heure du Maroc. Reculée de
- * 21h à 20h quand l'annonce Telegram est devenue le travail de
- * `rappel-soir` (fenêtre 21h-22h) : le solde doit être en base avant que ce
- * dernier ne le lise.
+ * Heure de la synchronisation quotidienne. Le solde doit être en base avant
+ * que `rappel-soir` ne le lise, à 21h00 heure du Maroc.
+ *
+ * 19 et non 20 : malgré `inTimezone("Africa/Casablanca")`, le déclencheur
+ * part à l'heure UTC, soit une heure plus tard au Maroc (UTC+1). Réglé à
+ * 20, il tournait entre 21h et 22h, APRÈS le rappel, qui annonçait donc le
+ * relevé de la veille (constaté le 08/10/2026 : synchro du 07/10 à 21h53).
+ * À 19, il tourne entre 20h et 21h ; pendant le Ramadan (UTC+0), entre 19h
+ * et 20h : avant 21h dans les deux cas.
  */
-var HEURE_CLOTURE = 20;
+var HEURE_CLOTURE = 19;
 
 /** Solde d'ouverture, repris de l'en-tête de la colonne H. */
 var OUVERTURE = 7881;
