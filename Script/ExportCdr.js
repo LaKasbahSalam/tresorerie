@@ -4,7 +4,7 @@
  * À placer dans le projet Apps Script de la V16 (dossier
  * Tresorerie\Script, à côté de Code.js), puis `clasp push`.
  *
- * Chaque soir à 22h (heure du Maroc), après la clôture de caisse de 21h :
+ * Chaque soir (déclencheur « 22h », qui part en heure UTC : 23h au Maroc) :
  * lit tous les onglets dont la cellule A1 commence par
  * « COMPTE DE RÉSULTAT — EXERCICE » et les envoie tels quels à l'Edge
  * Function `import-cdr`. Lecture seule : ce script n'écrit rien dans le

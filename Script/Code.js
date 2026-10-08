@@ -26,9 +26,9 @@
  * message du soir en relisant le dernier relevé connu. Avant ce découplage,
  * une synchronisation en échec ici (catégorie invalide, panne réseau)
  * faisait disparaître le message du soir tout entier — c'est ce qui s'est
- * produit du 23 au 27 août 2026. Ce script reste donc à 20h, une heure
- * avant la fenêtre de `rappel-soir` (21h-22h), pour que le solde ait le
- * temps d'être en base avant que le rappel ne le lise.
+ * produit du 23 au 27 août 2026. Depuis le 08/10/2026, il tourne à 14h et
+ * `export-caisse` fait partir le message dès le solde relevé (voir
+ * `HEURE_CLOTURE`).
  *
  * INSTALLATION
  *   1. Dans le classeur : Extensions -> Apps Script, coller ce fichier.

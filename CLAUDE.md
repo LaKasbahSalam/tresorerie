@@ -18,7 +18,7 @@ Supabase.
 **La synchronisation reste en Apps Script, et c'est voulu.** Elle tourne
 dans le cloud de Google, gratuitement, sans machine à maintenir. Ne pas
 proposer de la réécrire en Python : cela obligerait à héberger une
-exécution quotidienne à 21h (poste allumé ou serveur), en remplaçant
+exécution quotidienne (poste allumé ou serveur), en remplaçant
 quelque chose qui fonctionne par quelque chose de plus fragile.
 
 **Le script ne disparaît plus d'une version à l'autre.** C'était vrai
@@ -97,7 +97,8 @@ si le script plante en cours de route.
 **Colonnes I et J : ne jamais y toucher.** Réservées à la saisie manuelle
 (comptage, projet). Le script Apps Script ne les écrit pas.
 
-**Synchro automatique à 21h** (heure du Maroc). Elle se positionne d'après
+**Synchro automatique à 14h** (heure du Maroc ; `HEURE_CLOTURE = 13`, car le
+déclencheur part en heure UTC malgré `inTimezone`). Elle se positionne d'après
 la dernière ligne portant un code en colonne A. Éviter les écritures
 Python massives autour de cette heure : le verrou `LockService` du script
 protège contre deux exécutions Apps Script simultanées, mais il ne
