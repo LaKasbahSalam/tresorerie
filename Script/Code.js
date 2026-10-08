@@ -45,17 +45,16 @@
 var ONGLET = "Caisse";
 
 /**
- * Heure de la synchronisation quotidienne. Le solde doit être en base avant
- * que `rappel-soir` ne le lise, à 21h00 heure du Maroc.
+ * Heure de la synchronisation quotidienne : 14h au Maroc. Dès que le solde
+ * est relevé, `export-caisse` fait partir le message « on peut compter la
+ * caisse » (depuis le 08/10/2026 ; avant, il attendait 21h).
  *
- * 19 et non 20 : malgré `inTimezone("Africa/Casablanca")`, le déclencheur
- * part à l'heure UTC, soit une heure plus tard au Maroc (UTC+1). Réglé à
- * 20, il tournait entre 21h et 22h, APRÈS le rappel, qui annonçait donc le
- * relevé de la veille (constaté le 08/10/2026 : synchro du 07/10 à 21h53).
- * À 19, il tourne entre 20h et 21h ; pendant le Ramadan (UTC+0), entre 19h
- * et 20h : avant 21h dans les deux cas.
+ * 13 et non 14 : malgré `inTimezone("Africa/Casablanca")`, le déclencheur
+ * part à l'heure UTC, soit une heure plus tard au Maroc (UTC+1) — constaté
+ * le 08/10/2026, la synchro « 20h » du 07/10 a tourné à 21h53. À 13, elle
+ * tourne entre 14h et 15h ; pendant le Ramadan (UTC+0), entre 13h et 14h.
  */
-var HEURE_CLOTURE = 19;
+var HEURE_CLOTURE = 13;
 
 /** Solde d'ouverture, repris de l'en-tête de la colonne H. */
 var OUVERTURE = 7881;
