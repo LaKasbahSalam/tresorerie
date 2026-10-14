@@ -210,6 +210,9 @@ function synchroniser() {
     // avant — `rappel-soir` annoncera le dernier relevé connu avec sa date
     // et un avertissement plutôt que de rester silencieux.
     releverSolde(feuille);
+    // Après la caisse, les comptes salaires (SoldesSalaries.js) : les
+    // salaires versés aujourd'hui viennent d'arriver dans l'onglet.
+    releverSoldesSalaries();
     return ajoutees;
   } finally {
     verrou.releaseLock();
