@@ -1,6 +1,6 @@
 /**
- * Soldes des comptes salaires, relevés pour l'appli (page Snack, onglet
- * Équipe) : chacun y voit le sien, Ayoub (manager) et l'admin les trois.
+ * Soldes des comptes salaires, relevés pour l'appli (Admin → Salaires) :
+ * chacun y voit le sien, Ayoub (manager) et l'admin les trois.
  *
  * Lus dans « Associés-Salariés », sur la ligne TOTAL de chaque bloc,
  * colonne du solde cumulé. Positif : l'hôtel doit encore du salaire ;
